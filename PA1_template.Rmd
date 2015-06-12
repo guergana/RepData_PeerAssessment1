@@ -1,25 +1,152 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
+title: 'Reproducible Research: Peer Assessment 1'
+output:
   html_document:
-    keep_md: true
+    keep_md: yes
 ---
-
+Guergana Velitchkova Tzatchkova
 
 ## Loading and preprocessing the data
+
+```{r}
+data <- read.csv("activity.csv", header=TRUE)
+summary(data)
+
+```
 
 
 
 ## What is mean total number of steps taken per day?
 
+Histogram of total number of steps per day.
+```{r}
+stepsPerDay <- tapply(data$steps, data$date, sum, na.rm=TRUE)
+hist(stepsPerDay)
 
+```
 
+Median of steps per day:
+
+```{r}
+median(stepsPerDay)
+
+```
+
+Mean of steps per day:
+
+```{r}
+mean(stepsPerDay)
+
+```
 ## What is the average daily activity pattern?
 
+5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis).
 
+```{r}
+stepsPerInterval <- tapply(data$steps, data$interval, sum, na.rm=TRUE)
+meanPerInterval <- tapply(data$steps, data$interval, mean, na.rm=TRUE)
+
+plot(unique(data$interval), meanPerInterval, type="l", xlab="Time Intervals", ylab="Average Steps per Interval")
+
+```
+
+Interval with maximum number of steps: (interval / total steps in that interval)
+
+```{r}
+stepsPerInterval[which.max(stepsPerInterval)]
+```
 
 ## Imputing missing values
 
+Total number of missing values in the dataset (i.e. the total number of rows with NAs)
+
+```{r}
+sum(complete.cases(data) == FALSE)
+```
+
+Devise a strategy for filling in all of the missing values in the dataset. The strategy does not need to be sophisticated. For example, you could use the mean/median for that day, or the mean for that 5-minute interval, etc.
+
+Replacing NA values with mean for each 5-min interval
+
+```{r}
+
+myFunction <- function(x, index){
+    if( is.na(x) ) { meanPerInterval[index][[1]] } else { x }
+    
+}
+```
+
+New dataset equal to the original dataset but with the missing data filled in.
+
+```{r}
+noNAdata <- data
+
+noNAdata$steps <- mapply(myFunction, data$steps, seq_along(meanPerInterval)) 
+
+
+```
+
+
+Histogram of total number of steps per day with replaced NAs.
+```{r}
+stepsPerDaynoNA <- tapply(noNAdata$steps, noNAdata$date, sum, na.rm=TRUE)
+hist(stepsPerDaynoNA, xlab="Total Steps per day")
+
+```
+
+Median of steps per day with estimate values:
+
+```{r}
+median(stepsPerDaynoNA)
+
+```
+
+Mean of steps per day with estimate values:
+
+```{r}
+mean(stepsPerDaynoNA)
+
+```
+
+**Do these values differ from the estimates from the first part of the assignment? What is the impact of imputing missing data on the estimates of the total daily number of steps? **
+
+Yes, they do. The total steps is higher with the estimate values and the mean and the median are the same with estimate values. Also the frequency of steps between 5000 and 10,000 went down in relation to the values between 0 and 5000. 
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+```{r}
+
+noNAdata$weekday <- weekdays(as.Date(noNAdata$date, format="%Y-%m-%d"))
+#create a vector of weekdays
+weekdays1 <- c('lunes', 'martes', 'miércoles', 'jueves', 'viernes')
+#Use `%in%` and `weekdays` to create a logical vector
+#convert to `factor` and specify the `levels/labels`
+noNAdata$weekday <-  factor((noNAdata$weekday %in% weekdays1)+1L,
+      levels=1:2, labels=c('weekend', 'weekday'))
+
+weekdays <- noNAdata[noNAdata$weekday == "weekday",]
+weekends <- noNAdata[noNAdata$weekday == "weekend",]
+
+#plot(weekends$interval, weekends$steps, type="l")
+#plot(weekdays$interval, weekdays$steps, type="l")
+
+
+library(lattice)
+
+#AvgStepsnoNAwDays <- tapply(weekdays$steps, weekdays$interval, mean)
+#AvgStepsnoNAwEnds <- tapply(weekends$steps, weekends$interval, mean)
+
+#AvgStepsnoNA <- tapply(noNAdata$steps, noNAdata$interval, noNAdata$weekday , mean)
+
+
+
+aggData <- setNames(aggregate(formula = noNAdata$steps~noNAdata$interval+noNAdata$weekday, data = noNAdata,  FUN = mean ), c("Interval", "Weekday",  "AvgSteps"))
+
+
+xyplot( aggData$AvgSteps ~ aggData$Interval | aggData$Weekday , type="l", layout=c(1,2) )
+
+
+
+
+```
